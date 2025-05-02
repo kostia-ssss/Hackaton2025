@@ -7,6 +7,8 @@ width, height = 800, 600
 window = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Fantasy Hackaton 2025")
 pygame.display.set_icon(pygame.image.load("images/ground.png"))
+bg = pygame.image.load("images/bg.png")
+bg = pygame.transform.scale(bg, (width, height))
 
 class Sprite:
     def __init__(self , x , y , w , h, img):
@@ -81,6 +83,7 @@ class Player(Sprite):
         if self.hp > 1:
             self.hp -= 1
             self.rect.x, self.rect.y = self.start_x, self.start_y
+            camera.rect.x, camera.rect.y = 0, 0
         else:
             game = False
             
@@ -160,10 +163,10 @@ player = Player(50, 490, 30, 70, pygame.image.load("images/player.png"), pygame.
     
 game = True
 while game:
+    window.blit(bg, (0, 0))
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             game = False
-    window.fill((50, 50, 70))
     
     for block in blocks:
         block.draw()
@@ -183,6 +186,6 @@ while game:
     player.jumping(blocks, lifts)
     camera.move(player)
     
-    pygame.display.flip()
+    pygame.display.update()
 
 pygame.quit()
