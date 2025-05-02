@@ -4,12 +4,16 @@ pygame.init()
 
 width, height = 800, 600
 CanShoot = False
+num_of_hearts = 5
 
 window = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Fantasy Hackaton 2025")
 pygame.display.set_icon(pygame.image.load("images/ground.png"))
 bg = pygame.image.load("images/bg.png")
 bg = pygame.transform.scale(bg, (width, height))
+music = pygame.mixer.music.load("sounds/main_music.mp3")
+pygame.mixer.music.set_volume(0.5)
+pygame.mixer.music.play(-1)
 
 class Sprite:
     def __init__(self , x , y , w , h, img):
@@ -84,6 +88,7 @@ class Player(Sprite):
     def damage(self):
         global game
         if self.hp > 1:
+            hearts.pop(self.hp-1)
             self.hp -= 1
             self.rect.x, self.rect.y = self.start_x, self.start_y
             camera.rect.x, camera.rect.y = 0, 0
@@ -161,6 +166,7 @@ blocks = []
 lifts = []
 spikes = []
 bullets = []
+hearts = []
 
 for row in lvl1:
     for tile in row:
@@ -176,10 +182,15 @@ for row in lvl1:
             lifts.append(Lift(80, 40, wall_img, 1, block_x, 0, block_y, -440+160, "vertical"))
         elif tile == 11:
             blocks.append(Sprite(block_x, block_y, block_size, block_size, block2_img))
+        elif tile == 31:
+            spikes.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/spike2.png")))
 
         block_x += block_size
     block_x = 0
     block_y += block_size
+
+for i in range(num_of_hearts):
+    hearts.append(Sprite(i * 50, 0, 50, 50, pygame.image.load("images/heart.png")))
 
 pl_img = pygame.image.load("images/player.png")
 player = Player(50, 490, 30, 70, pl_img, pygame.transform.flip(pl_img, True, False), 1, 12)
@@ -204,10 +215,18 @@ while game:
     
     if CanShoot:
         gun.draw()
-        gun.rect.x, gun.rect.y = player.rect.x+20, player.rect.y-15
+        if player.img == player.img_r:
+            gun.rect.x, gun.rect.y = player.rect.x+20, player.rect.y-15
+        else:
+            gun.rect.x, gun.rect.y = player.rect.x-10, player.rect.y-15
     
     for block in blocks:
         block.draw()
+    
+    for h in hearts:
+        h.draw()
+        h.rect.y = camera.rect.y
+        h.rect.x = camera.rect.x + hearts.index(h)*50
     
     for spike in spikes:
         spike.draw()
