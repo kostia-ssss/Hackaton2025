@@ -3,6 +3,7 @@ from map import lvl1
 pygame.init()
 
 width, height = 800, 600
+CanShoot = False
 
 window = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Fantasy Hackaton 2025")
@@ -22,8 +23,8 @@ class Sprite:
 class Player(Sprite):
     def __init__(self , x , y , w , h , img1, img2 , speed, jumpforce):
         super().__init__(x, y, w, h, img1)
-        self.img_r = self.img
-        self.img_l = pygame.transform.scale(img2, (w, h))
+        self.img_l = self.img
+        self.img_r = pygame.transform.scale(img2, (w, h))
         self.speed = speed
         self.jumpforce = jumpforce
         self.jump_pressed = False
@@ -39,10 +40,12 @@ class Player(Sprite):
         orig_x = self.rect.x
 
         if keys[pygame.K_a]:
+            self.img = self.img_l
             self.rect.left -= self.speed
             if self.check_collisions(plats) or self.rect.x < 0:
                 self.rect.x = orig_x
         if keys[pygame.K_d]:
+            self.img = self.img_r
             self.rect.x += self.speed
             if self.check_collisions(plats):
                 self.rect.x = orig_x
@@ -86,7 +89,9 @@ class Player(Sprite):
             camera.rect.x, camera.rect.y = 0, 0
         else:
             game = False
-            
+    
+    def fire(self, pos):
+        bullets.append(Bullet(self.rect.centerx + 20,self.rect.y - 15, 10, 10, pygame.image.load("images/bullet.png"), 10, pos))
 
 class Lift(Sprite):
     def __init__(self, w, h, img, speed, x1, x2, y1, y2, type):
@@ -129,6 +134,20 @@ class Camera:
         elif player.rect.centery > self.rect.y + margin_y2:
             self.rect.y = player.rect.centery - margin_y2
 
+class Bullet(Sprite):
+    def __init__(self, x, y, w, h, image, speed, pos):
+        super().__init__(x, y, w, h, image)
+        self.speed = speed
+        v1 = pygame.Vector2(x, y)
+        v2 = pygame.Vector2(pos[0], pos[1])
+        v3 = v2 - v1
+        self.vect = v3.normalize()
+
+    def move(self):
+        self.rect.x += self.vect[0] * self.speed
+        self.rect.y += self.vect[1] * self.speed
+        if self.rect.bottom <= 0 or self.rect.top >= height or self.rect.right <= 0 or self.rect.left >= width:
+            bullets.remove(self)
 
 camera = Camera(0, 0, width, height, 2)
 
@@ -141,6 +160,7 @@ block_x, block_y = 0, -600
 blocks = []
 lifts = []
 spikes = []
+bullets = []
 
 for row in lvl1:
     for tile in row:
@@ -152,21 +172,39 @@ for row in lvl1:
             spikes.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/spike.png")))
         elif tile == 4:
             lifts.append(Lift(80, 40, wall_img, 1, block_x, 0, block_y, 300, "vertical"))
+        elif tile == 42:
+            lifts.append(Lift(80, 40, wall_img, 1, block_x, 0, block_y, -440+160, "vertical"))
         elif tile == 11:
             blocks.append(Sprite(block_x, block_y, block_size, block_size, block2_img))
 
         block_x += block_size
     block_x = 0
     block_y += block_size
-    
-player = Player(50, 490, 30, 70, pygame.image.load("images/player.png"), pygame.image.load("images/player.png"), 1, 12)
-    
+
+pl_img = pygame.image.load("images/player.png")
+player = Player(50, 490, 30, 70, pl_img, pygame.transform.flip(pl_img, True, False), 1, 12)
+gun = Sprite(player.rect.x + 10, player.rect.y - 15, 20, 50, pygame.image.load("images/gun.png"))
+
 game = True
 while game:
     window.blit(bg, (0, 0))
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             game = False
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_s:
+                if CanShoot == False:
+                    CanShoot = True
+                else:
+                    CanShoot = False
+            if event.key == pygame.K_q and CanShoot:
+                pos = pygame.mouse.get_pos()
+                world_mouse_pos = (pos[0] + camera.rect.x, pos[1] + camera.rect.y)
+                player.fire(world_mouse_pos)
+    
+    if CanShoot:
+        gun.draw()
+        gun.rect.x, gun.rect.y = player.rect.x+20, player.rect.y-15
     
     for block in blocks:
         block.draw()
@@ -177,6 +215,10 @@ while game:
     for l in lifts:
         l.draw()
         l.move()
+    
+    for b in bullets:
+        b.draw()
+        b.move()
     
     if any(player.rect.colliderect(s.rect) for s in spikes):
         player.damage()
