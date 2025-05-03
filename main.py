@@ -1,10 +1,11 @@
 import pygame
-from map import lvl1
+from map import *
 pygame.init()
 
 width, height = 800, 600
 CanShoot = False
 num_of_hearts = 5
+score = 0
 
 window = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Fantasy Hackaton 2025")
@@ -154,6 +155,20 @@ class Bullet(Sprite):
         if self.rect.bottom <= 0 or self.rect.top >= height or self.rect.right <= 0 or self.rect.left >= width:
             bullets.remove(self)
 
+class Portal(Sprite):
+    def __init__(self, x, y, w, h, img):
+        super().__init__(x, y, w, h, img)
+        self.wait = 30
+    
+    def teleport(self, player: Player, p2):
+        if self.wait == 0:
+            player.rect.x, player.rect.y = p2.rect.x, p2.rect.y - player.rect.height
+            p2.wait = 30
+
+    def reset(self):
+        if self.wait > 0:
+            self.wait -= 1
+
 camera = Camera(0, 0, width, height, 2)
 
 block_img = pygame.image.load("images/ground.png")
@@ -167,8 +182,10 @@ lifts = []
 spikes = []
 bullets = []
 hearts = []
+portals = []
+coins = []
 
-for row in lvl1:
+for row in lvl2:
     for tile in row:
         if tile == 1:
             blocks.append(Sprite(block_x, block_y, block_size, block_size, block_img))
@@ -178,12 +195,18 @@ for row in lvl1:
             spikes.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/spike.png")))
         elif tile == 4:
             lifts.append(Lift(80, 40, wall_img, 1, block_x, 0, block_y, 300, "vertical"))
+        elif tile == 7:
+            coins.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/diamond.png")))
+        elif tile == 6:
+            coins.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/coin.png")))
         elif tile == 42:
             lifts.append(Lift(80, 40, wall_img, 1, block_x, 0, block_y, -440+160, "vertical"))
         elif tile == 11:
             blocks.append(Sprite(block_x, block_y, block_size, block_size, block2_img))
         elif tile == 31:
             spikes.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/spike2.png")))
+        elif tile == 5:
+            portals.append(Portal(block_x, block_y, block_size/2, block_size, pygame.image.load("images/portal.png")))
 
         block_x += block_size
     block_x = 0
@@ -204,10 +227,7 @@ while game:
             game = False
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_s:
-                if CanShoot == False:
-                    CanShoot = True
-                else:
-                    CanShoot = False
+                CanShoot = not CanShoot
             if event.key == pygame.K_q and CanShoot:
                 pos = pygame.mouse.get_pos()
                 world_mouse_pos = (pos[0] + camera.rect.x, pos[1] + camera.rect.y)
@@ -223,6 +243,15 @@ while game:
     for block in blocks:
         block.draw()
     
+    for c in coins:
+        c.draw()
+        if player.rect.colliderect(c.rect):
+            if c.img == pygame.image.load("images/diamond.png"):
+                score += 50
+            else:
+                score += 1
+            coins.remove(c)
+    
     for h in hearts:
         h.draw()
         h.rect.y = camera.rect.y
@@ -230,12 +259,16 @@ while game:
     
     for spike in spikes:
         spike.draw()
+    
+    for p in portals:
+        p.draw()
+        p.reset()
         
     for l in lifts:
         l.draw()
         l.move()
     
-    for b in bullets:
+    for b in bullets[:]:
         b.draw()
         b.move()
     
@@ -245,7 +278,12 @@ while game:
     player.draw()
     player.move(blocks)
     player.jumping(blocks, lifts)
+    for i in range(len(portals)):
+        for j in range(len(portals)):
+            if i != j and player.rect.colliderect(portals[i].rect):
+                portals[i].teleport(player, portals[j])
     camera.move(player)
+    print(score)
     
     pygame.display.update()
 
