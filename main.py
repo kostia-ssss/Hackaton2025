@@ -1,4 +1,4 @@
-import pygame
+import pygame, math
 from map import *
 pygame.init()
 
@@ -6,6 +6,8 @@ width, height = 800, 600
 CanShoot = False
 num_of_hearts = 5
 score = 0
+phase = 0
+clock = pygame.time.Clock()
 
 window = pygame.display.set_mode((width, height))
 pygame.display.set_caption("Fantasy Hackaton 2025")
@@ -169,6 +171,17 @@ class Portal(Sprite):
         if self.wait > 0:
             self.wait -= 1
 
+class Spike(Sprite):
+    def __init__(self, x, y, w, h, img, type=None):
+        super().__init__(x, y, w, h, img)
+        self.type = type
+        self.start_x, self.start_y = x, y
+    
+    def move(self, i, len):
+        if self.type == 'moving horizontal':
+            self.rect.x = self.start_x + math.sin(i) * len
+        elif self.type == 'moving vertical':
+            self.rect.y = self.start_y + math.sin(i) * len
 camera = Camera(0, 0, width, height, 2)
 
 block_img = pygame.image.load("images/ground.png")
@@ -185,40 +198,55 @@ hearts = []
 portals = []
 coins = []
 
-for row in lvl2:
-    for tile in row:
-        if tile == 1:
-            blocks.append(Sprite(block_x, block_y, block_size, block_size, block_img))
-        elif tile == 2:
-            blocks.append(Sprite(block_x, block_y, block_size, block_size, wall_img))
-        elif tile == 3:
-            spikes.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/spike.png")))
-        elif tile == 4:
-            lifts.append(Lift(80, 40, wall_img, 1, block_x, 0, block_y, 300, "vertical"))
-        elif tile == 7:
-            coins.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/diamond.png")))
-        elif tile == 6:
-            coins.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/coin.png")))
-        elif tile == 42:
-            lifts.append(Lift(80, 40, wall_img, 1, block_x, 0, block_y, -440+160, "vertical"))
-        elif tile == 11:
-            blocks.append(Sprite(block_x, block_y, block_size, block_size, block2_img))
-        elif tile == 31:
-            spikes.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/spike2.png")))
-        elif tile == 5:
-            portals.append(Portal(block_x, block_y, block_size/2, block_size, pygame.image.load("images/portal.png")))
+def load_lvl(lvl):
+    global block_x, block_y, block_size, blocks, lifts, spikes, portals, coins
+    block_x, block_y = 0, -600
+    blocks = []
+    lifts = []
+    spikes = []
+    portals = []
+    coins = []
+    for row in lvl:
+        for tile in row:
+            if tile == 1:
+                blocks.append(Sprite(block_x, block_y, block_size, block_size, block_img))
+            elif tile == 2:
+                blocks.append(Sprite(block_x, block_y, block_size, block_size, wall_img))
+            elif tile == 3:
+                spikes.append(Spike(block_x, block_y, block_size, block_size, pygame.image.load("images/spike.png")))
+            elif tile == 32:
+                spikes.append(Spike(block_x, block_y+23, block_size, block_size, pygame.image.load("images/spike.png"), 'moving vertical'))
+            elif tile == 4:
+                lifts.append(Lift(80, 40, wall_img, 1, block_x, 0, block_y, 300, "vertical"))
+            elif tile == 7:
+                coins.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/diamond.png")))
+            elif tile == 6:
+                coins.append(Sprite(block_x, block_y, block_size, block_size, pygame.image.load("images/coin.png")))
+            elif tile == 42:
+                lifts.append(Lift(80, 40, wall_img, 1, block_x, 0, block_y, -440+160, "vertical"))
+            elif tile == 11:
+                blocks.append(Sprite(block_x, block_y, block_size, block_size, block2_img))
+            elif tile == 31:
+                spikes.append(Spike(block_x, block_y, block_size, block_size, pygame.image.load("images/spike2.png")))
+            elif tile == 5:
+                portals.append(Portal(block_x, block_y, block_size/2, block_size, pygame.image.load("images/portal.png")))
 
-        block_x += block_size
-    block_x = 0
-    block_y += block_size
+            block_x += block_size
+        block_x = 0
+        block_y += block_size
+
+load_lvl(lvl2)
 
 for i in range(num_of_hearts):
     hearts.append(Sprite(i * 50, 0, 50, 50, pygame.image.load("images/heart.png")))
 
 pl_img = pygame.image.load("images/player.png")
-player = Player(50, 490, 30, 70, pl_img, pygame.transform.flip(pl_img, True, False), 1, 12)
+player = Player(50, 490, 30, 70, pl_img, pygame.transform.flip(pl_img, True, False), 2, 12)
 gun = Sprite(player.rect.x + 10, player.rect.y - 15, 20, 50, pygame.image.load("images/gun.png"))
+font = pygame.font.Font("fonts/Macondo-Regular.ttf", 50)
+play_txt = font.render("PLAY", True, (0, 0, 0))
 
+menu = True
 game = True
 while game:
     window.blit(bg, (0, 0))
@@ -232,59 +260,73 @@ while game:
                 pos = pygame.mouse.get_pos()
                 world_mouse_pos = (pos[0] + camera.rect.x, pos[1] + camera.rect.y)
                 player.fire(world_mouse_pos)
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            pos = event.pos
+            if btn.collidepoint(pos[0], pos[1]):
+                menu = False
     
-    if CanShoot:
-        gun.draw()
-        if player.img == player.img_r:
-            gun.rect.x, gun.rect.y = player.rect.x+20, player.rect.y-15
-        else:
-            gun.rect.x, gun.rect.y = player.rect.x-10, player.rect.y-15
-    
-    for block in blocks:
-        block.draw()
-    
-    for c in coins:
-        c.draw()
-        if player.rect.colliderect(c.rect):
-            if c.img == pygame.image.load("images/diamond.png"):
-                score += 50
+    if not menu:
+        if CanShoot:
+            gun.draw()
+            if player.img == player.img_r:
+                gun.rect.x, gun.rect.y = player.rect.x+20, player.rect.y-15
             else:
-                score += 1
-            coins.remove(c)
-    
-    for h in hearts:
-        h.draw()
-        h.rect.y = camera.rect.y
-        h.rect.x = camera.rect.x + hearts.index(h)*50
-    
-    for spike in spikes:
-        spike.draw()
-    
-    for p in portals:
-        p.draw()
-        p.reset()
+                gun.rect.x, gun.rect.y = player.rect.x-10, player.rect.y-15
+
+        for c in coins:
+            c.draw()
+            if player.rect.colliderect(c.rect):
+                if c.img == pygame.image.load("images/diamond.png"):
+                    score += 50
+                else:
+                    score += 1
+                coins.remove(c)
         
-    for l in lifts:
-        l.draw()
-        l.move()
-    
-    for b in bullets[:]:
-        b.draw()
-        b.move()
-    
-    if any(player.rect.colliderect(s.rect) for s in spikes):
-        player.damage()
-    
-    player.draw()
-    player.move(blocks)
-    player.jumping(blocks, lifts)
-    for i in range(len(portals)):
-        for j in range(len(portals)):
-            if i != j and player.rect.colliderect(portals[i].rect):
-                portals[i].teleport(player, portals[j])
-    camera.move(player)
-    print(score)
+        for h in hearts:
+            h.draw()
+            h.rect.y = camera.rect.y
+            h.rect.x = camera.rect.x + hearts.index(h)*50
+        
+        for spike in spikes:
+            spike.draw()
+            spike.move(phase, 20)
+        
+        for p in portals:
+            p.draw()
+            p.reset()
+            
+        for l in lifts:
+            l.draw()
+            l.move()
+        
+        for b in bullets[:]:
+            b.draw()
+            b.move()
+        
+        for block in blocks:
+            block.draw()
+        
+        if any(player.rect.colliderect(s.rect) for s in spikes):
+            player.damage()
+        
+        player.draw()
+        player.move(blocks)
+        player.jumping(blocks, lifts)
+        for i in range(len(portals)):
+            for j in range(len(portals)):
+                if i != j and player.rect.colliderect(portals[i].rect):
+                    portals[i].teleport(player, portals[j])
+        camera.move(player)
+        phase += 0.008
+        print(len(spikes))
+
+    if menu:
+        window.blit(bg, (0, 0))
+        btn = pygame.draw.rect(window, (0, 150, 0), ((width/2-100, height/2-50, 200, 100)))
+        window.blit(play_txt, (width/2-50, height/2-25))
+        
     
     pygame.display.update()
+    clock.tick(60)
 
 pygame.quit()
