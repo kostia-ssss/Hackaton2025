@@ -26,6 +26,9 @@ class Sprite:
     
     def draw(self):
         window.blit(self.img , (self.rect.x - camera.rect.x, self.rect.y - camera.rect.y))
+    
+    def draw_ui(self):
+        window.blit(self.img , (self.rect.x, self.rect.y))
         
 class Player(Sprite):
     def __init__(self , x , y , w , h , img1, img2 , speed, jumpforce):
@@ -89,14 +92,14 @@ class Player(Sprite):
         return any(self.rect.colliderect(plat.rect) for plat in plats)
     
     def damage(self):
-        global game
+        global menu
         if self.hp > 1:
             hearts.pop(self.hp-1)
             self.hp -= 1
             self.rect.x, self.rect.y = self.start_x, self.start_y
             camera.rect.x, camera.rect.y = 0, 0
         else:
-            game = False
+            menu = True
     
     def fire(self, pos):
         bullets.append(Bullet(self.rect.centerx + 20,self.rect.y - 15, 10, 10, pygame.image.load("images/bullet.png"), 10, pos))
@@ -176,6 +179,7 @@ class Spike(Sprite):
         super().__init__(x, y, w, h, img)
         self.type = type
         self.start_x, self.start_y = x, y
+        self.rect.height -= 5
     
     def move(self, i, len):
         if self.type == 'moving horizontal':
@@ -243,8 +247,13 @@ for i in range(num_of_hearts):
 pl_img = pygame.image.load("images/player.png")
 player = Player(50, 490, 30, 70, pl_img, pygame.transform.flip(pl_img, True, False), 2, 12)
 gun = Sprite(player.rect.x + 10, player.rect.y - 15, 20, 50, pygame.image.load("images/gun.png"))
+play_btn = Sprite(width/2-100, height/2-50, 200, 100, pygame.image.load("images/btns/Play_btn.png"))
+menu_btn = Sprite(width-200, 0, 200, 100, pygame.image.load("images/btns/Menu_btn.png"))
+exit_btn = Sprite(0, height-75, 150, 75, pygame.image.load("images/btns/Exit_btn.png"))
 font = pygame.font.Font("fonts/Macondo-Regular.ttf", 50)
 play_txt = font.render("PLAY", True, (0, 0, 0))
+menu_txt = font.render("MENU", True, (0, 0, 0))
+exit_txt = font.render("EXIT", True, (0, 0, 0))
 
 menu = True
 game = True
@@ -262,8 +271,12 @@ while game:
                 player.fire(world_mouse_pos)
         if event.type == pygame.MOUSEBUTTONDOWN:
             pos = event.pos
-            if btn.collidepoint(pos[0], pos[1]):
+            if play_btn.rect.collidepoint(pos[0], pos[1]):
                 menu = False
+            if exit_btn.rect.collidepoint(pos[0], pos[1]):
+                game = False
+            if menu_btn.rect.collidepoint(pos[0], pos[1]) and not menu:
+                menu = True
     
     if not menu:
         if CanShoot:
@@ -312,6 +325,15 @@ while game:
         player.draw()
         player.move(blocks)
         player.jumping(blocks, lifts)
+        menu_btn.draw_ui()
+        
+        pos = pygame.mouse.get_pos()
+        if menu_btn.rect.collidepoint(pos[0], pos[1]):
+            menu_btn.img = pygame.transform.scale(pygame.image.load("images/btns/Menu_btn2.png"), (menu_btn.rect.w, menu_btn.rect.h))
+        else:
+            menu_btn.img = pygame.transform.scale(pygame.image.load("images/btns/Menu_btn.png"), (menu_btn.rect.w, menu_btn.rect.h))
+            
+        window.blit(menu_txt, (width - 180, 30))
         for i in range(len(portals)):
             for j in range(len(portals)):
                 if i != j and player.rect.colliderect(portals[i].rect):
@@ -322,9 +344,21 @@ while game:
 
     if menu:
         window.blit(bg, (0, 0))
-        btn = pygame.draw.rect(window, (0, 150, 0), ((width/2-100, height/2-50, 200, 100)))
-        window.blit(play_txt, (width/2-50, height/2-25))
-        
+        play_btn.draw_ui()
+        exit_btn.draw_ui()
+        window.blit(play_txt, (width/2-60, height/2-30))
+        window.blit(exit_txt, (20, height-60))
+        pos = pygame.mouse.get_pos()
+        if play_btn.rect.collidepoint(pos[0], pos[1]):
+            play_btn.img = pygame.transform.scale(pygame.image.load("images/btns/Play_btn2.png"), (play_btn.rect.w, play_btn.rect.h))
+        else:
+            play_btn.img = pygame.transform.scale(pygame.image.load("images/btns/Play_btn.png"), (play_btn.rect.w, play_btn.rect.h))
+            
+        if exit_btn.rect.collidepoint(pos[0], pos[1]):
+            exit_btn.img = pygame.transform.scale(pygame.image.load("images/btns/Exit_btn2.png"), (exit_btn.rect.w, exit_btn.rect.h))
+        else:
+            exit_btn.img = pygame.transform.scale(pygame.image.load("images/btns/Exit_btn.png"), (exit_btn.rect.w, exit_btn.rect.h))
+            
     
     pygame.display.update()
     clock.tick(60)
